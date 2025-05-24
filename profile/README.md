@@ -39,7 +39,7 @@ All services are deployed to **Amazon EKS**, managed via **ArgoCD** (App of Apps
 | `qrify-web-api`          | FastAPI backend with S3 integration                   |
 | `infra`        | Terraform code for AWS infrastructure                 |
 | `helm-charts`  | Shared Helm chart templates for service deployments   |
-| `app-state`    | ArgoCD Applications and Helm values for dev/prod      |
+| `cluster-state`    | ArgoCD Applications and Helm values for dev/prod      |
 | `.github`      | This organization profile README                      |
 
 ---
