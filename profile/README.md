@@ -35,8 +35,8 @@ All services are deployed to **Amazon EKS**, managed via **ArgoCD** (App of Apps
 
 | Repository     | Description                                           |
 |----------------|-------------------------------------------------------|
-| `frontend`     | Next.js web UI with Docker and GitHub Actions         |
-| `api`          | FastAPI backend with S3 integration                   |
+| `qrify-web`     | Next.js web UI with Docker and GitHub Actions         |
+| `qrify-web-api`          | FastAPI backend with S3 integration                   |
 | `infra`        | Terraform code for AWS infrastructure                 |
 | `helm-charts`  | Shared Helm chart templates for service deployments   |
 | `app-state`    | ArgoCD Applications and Helm values for dev/prod      |
