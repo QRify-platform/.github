@@ -78,9 +78,7 @@ Environment configs are separated using Helm value overrides, and deployed indep
 
 ## 📈 Observability
 
-- **CloudWatch Container Insights** for real-time metrics and container-level telemetry
-- **Fluent Bit** is used to stream logs to CloudWatch Logs
-- Optional dashboards and alarms are provisioned via Terraform for system health monitoring
+- Prometheus and Grafana
 
 ---
 
