@@ -13,23 +13,26 @@ The platform is composed of containerized microservices and supporting infrastru
 - **Storage**: AWS S3 for storing and serving generated QR images
 - **Secrets Management**: Sealed Secrets used for encrypted secret delivery via Git
 
-All services are deployed to **Amazon EKS**, managed via **ArgoCD** (App of Apps pattern), and integrated with **CloudWatch** for observability. Infrastructure is provisioned using **Terraform**, and deployments are environment-specific (`dev`, `prod`) using **Helm**.
+All services are deployed to **Amazon EKS**, managed via **ArgoCD** (App of Apps pattern), and integrated with Prometheus and Loki for observability. Infrastructure is provisioned using **Terraform**, and deployments are environment-specific (`dev`, `prod`) using **Helm**.  **Blue-Green Deployments** are implemented to ensure zero-downtime rollouts and safe rollbacks.
 
 ---
 
 ## 🔧 Technologies Used
 
-- **Next.js** – Frontend application
-- **FastAPI** – Backend API service
-- **Docker** – Containerization for all components
-- **Kubernetes (EKS)** – Container orchestration
-- **ArgoCD** – GitOps-based continuous delivery
-- **Helm** – Reusable and environment-specific chart management
-- **GitHub Actions** – CI pipelines for builds and image pushes
-- **Terraform** – Infrastructure as Code for VPC, EKS, S3, IAM, etc.
-- **AWS Services** – EKS, S3, Route 53, ACM, CloudWatch
-- **Sealed Secrets** – GitOps-compatible secrets encryption and delivery
-- **IRSA** – Secure cloud permissions for API pods
+* **Next.js** – Frontend application
+* **FastAPI** – Backend API service
+* **Docker** – Containerization for all components
+* **Kubernetes (EKS)** – Container orchestration
+* **ArgoCD** – GitOps-based continuous delivery
+* **Helm** – Reusable and environment-specific chart management
+* **GitHub Actions** – CI pipelines for builds and image pushes
+* **Terraform** – Infrastructure as Code for VPC, EKS, S3, IAM, etc.
+* **AWS Services** – EKS, S3, Route 53, ACM, CloudWatch
+* **Sealed Secrets** – GitOps-compatible secrets encryption and delivery
+* **IRSA (IAM Roles for Service Accounts)** – Secure cloud permissions for API pods
+* **Prometheus** – Metrics collection and alerting
+* **Grafana** – Dashboards and visualizations for app health, performance, and logs
+* **Loki** – Centralized log aggregation for Kubernetes workloads
 
 ---
 
@@ -64,6 +67,42 @@ QRify runs in two separate environments, each with its own ArgoCD App of Apps:
 
 Environment configs are separated using Helm value overrides, and deployed independently through ArgoCD.
 
+<img width="700" alt="Screenshot 2025-06-20 at 1 01 20 AM" src="https://github.com/user-attachments/assets/793cc2cc-b275-4487-8adf-dcd469de14e5" />
+
+---
+
+## 🔄 Blue-Green Deployments 🟦 🟩
+
+To minimize downtime and enable safe, reliable releases, the platform uses **Blue-Green Deployments** via ArgoCD and Kubernetes. This approach maintains two parallel environments (`blue` and `green`) and routes traffic only to the healthy one. Benefits include:
+
+* **Zero-downtime deployments**: Switch traffic seamlessly between versions.
+* **Safe rollbacks**: Instantly revert to the previous version if needed.
+* **Visual diffing**: ArgoCD UI makes version comparison easy before promotion.
+
+Routing between environments can be managed using Kubernetes services or ingress rules, and is fully automated in the CI/CD pipeline.
+
+<img width="700" alt="Screenshot 2025-06-20 at 1 33 01 AM" src="https://github.com/user-attachments/assets/5cdb0b09-c311-4fe9-a727-3cd6adb6de87" />
+
+---
+## 📈 Observability and Logging
+
+* **Prometheus** – Collects metrics from Kubernetes workloads and application endpoints, enabling real-time monitoring of resource usage, request durations, and system health.
+* **Grafana** – Visualizes metrics and logs through custom dashboards. Used to track application performance, error rates, request patterns, and namespace-level insights.
+* **Loki** – Aggregates logs from all containers in the cluster using Promtail. Enables efficient querying of logs based on labels like `namespace`, `pod`, and `container` for debugging and auditing.
+  
+* **Custom Dashboards** – Built in Grafana to monitor:
+  * Total logs per namespace
+  * Error rates and top error messages
+  * HTTP status code distribution (500s, 404s, etc.)
+  * Top API endpoints and latency patterns (if logs include duration)
+ 
+    
+<p float="left">
+  <img src="https://github.com/user-attachments/assets/02a8fddf-f9b7-45e0-ad3c-d4ec5d583151" style="margin-right: 5%;" width="45%" />
+  <img src="https://github.com/user-attachments/assets/f67135bc-d958-46f8-a24e-c8ac3f3ca672" width="45%" />
+</p>
+
+
 ---
 
 ## 🔒 Security & Cloud Best Practices
@@ -73,13 +112,6 @@ Environment configs are separated using Helm value overrides, and deployed indep
 - TLS termination via **ACM** and DNS with **Route 53**
 - Supports both **ALB** and **NGINX** Ingress Controllers
 - All infrastructure is provisioned using Terraform modules and AWS security best practices
-
----
-
-## 📈 Observability
-
-- Prometheus and Grafana
-
 ---
 
 ## ⚙️ CI/CD Workflows
@@ -98,7 +130,7 @@ The QRify Platform is a real-world demonstration of production-grade DevOps and 
 - GitOps-based Kubernetes application delivery
 - CI/CD automation across environments
 - Cloud-native observability and security
-- Multi-environment Helm deployment strategy
+- Multi-environment Blue-Green Helm deployment strategy
 - Modular, reusable Terraform infrastructure
 - Encrypted secret management using Sealed Secrets
 
@@ -110,3 +142,4 @@ Designed for performance, security, and maintainability in modern cloud-native e
 
 Built and maintained by Bryan Ramos  
 Feel free to reach out for questions, ideas, or collaboration.
+LinkedIn: https://www.linkedin.com/in/bryan-ramos-174826279/
