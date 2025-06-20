@@ -27,7 +27,19 @@ All services are deployed to **Amazon EKS**, managed via **ArgoCD** (App of Apps
 * **Helm** – Reusable and environment-specific chart management
 * **GitHub Actions** – CI pipelines for builds and image pushes
 * **Terraform** – Infrastructure as Code for VPC, EKS, S3, IAM, etc.
-* **AWS Services** – EKS, S3, Route 53, ACM, CloudWatch
+* **AWS Services**
+  * 🧠 EKS – Manages Kubernetes clusters to run containerized applications.
+
+  * 📦 S3 – Stores and serves generated QR code images.
+
+  * 🌐 Route 53 – Handles DNS for custom domains.
+
+  * 🔐 IAM – Controls secure access to AWS resources using IRSA.
+
+  * 📥 ECR – Stores and manages Docker container images.
+
+
+  
 * **Sealed Secrets** – GitOps-compatible secrets encryption and delivery
 * **IRSA (IAM Roles for Service Accounts)** – Secure cloud permissions for API pods
 * **Prometheus** – Metrics collection and alerting
@@ -63,7 +75,7 @@ QRify runs in two separate environments, each with its own ArgoCD App of Apps:
 - **Production**
   - Triggered via Git tag or manual promotion
   - Uses `values.prod.yaml`
-  - Higher replicas, optimized logging, restricted access
+  - Higher replicas, optimized logging, restricted accesss
 
 Environment configs are separated using Helm value overrides, and deployed independently through ArgoCD.
 
