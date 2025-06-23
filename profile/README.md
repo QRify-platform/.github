@@ -65,7 +65,7 @@ All services are deployed to **Amazon EKS**, managed via **ArgoCD** (App of Apps
 
 ## 🌐 Environments
 
-QRify runs in two separate environments, each with its own ArgoCD App of Apps:
+QRify runs in two separate environments, each with its corresponding services.
 
 - **Development**
   - Triggered on push to `main`
