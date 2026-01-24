@@ -1,6 +1,6 @@
 # 🚀 QRify Platform
 
-Welcome to the GitHub organization for the **QRify Platform** — a cloud-native system for generating and storing QR codes from user-submitted URLs. QRify is built using modern **DevOps** and **GitOps** principles, and is designed to run securely and scalably in the cloud using **Kubernetes**.
+Welcome to the GitHub organization for the **QRify Platform** — a cloud-native system for generating and storing QR codes from user-submitted URLs. QRify is built using modern **DevOps** and **GitOps** principles, and is designed to run securely and scalably in the cloud using **Kubernetes**. Built entirely by me, Bryan Ramos
 
 ---
 
