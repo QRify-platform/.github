@@ -1,6 +1,5 @@
 # 🚀 QRify Platform
-
-Welcome to the GitHub organization for the **QRify Platform** — a cloud-native system for generating and storing QR codes from user-submitted URLs, plus an internal **developer portal** that scaffolds new services onto the same platform. Built with modern **DevOps** and **GitOps** practices on **Amazon EKS**. Built entirely by me, Bryan Ramos.
+Welcome to the GitHub organization for the QRify Platform — a project that models a production-style platform on Amazon EKS. The sample product is a small QR code app (web + API); the focus is the surrounding stack: GitOps, CI/OIDC, observability, secrets management, and an internal developer portal for service scaffolding.
 
 **Live hosts**
 
