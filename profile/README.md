@@ -1,157 +1,176 @@
 # 🚀 QRify Platform
 
-Welcome to the GitHub organization for the **QRify Platform** — a cloud-native system for generating and storing QR codes from user-submitted URLs. QRify is built using modern **DevOps** and **GitOps** principles, and is designed to run securely and scalably in the cloud using **Kubernetes**. Built entirely by me, Bryan Ramos
+Welcome to the GitHub organization for the **QRify Platform** — a cloud-native system for generating and storing QR codes from user-submitted URLs, plus an internal **developer portal** that scaffolds new services onto the same platform. Built with modern **DevOps** and **GitOps** practices on **Amazon EKS**. Built entirely by me, Bryan Ramos.
+
+**Live hosts**
+
+| Env | Product | Portal |
+|-----|---------|--------|
+| **prod** | [qrify-web.com](https://qrify-web.com) | [portal.qrify-web.com](https://portal.qrify-web.com) |
+| **dev** | [dev.qrify-web.com](https://dev.qrify-web.com) | [portal-dev.qrify-web.com](https://portal-dev.qrify-web.com) |
+
+API traffic is served under `/backend` on the web hosts.
 
 ---
 
 ## 🧱 Architecture Overview
 
-The platform is composed of containerized microservices and supporting infrastructure:
+The platform is composed of product services and a supporting delivery plane:
 
-- **Frontend**: A Next.js web app that lets users submit URLs and view QR codes
-- **API**: A FastAPI service that generates QR codes and uploads them to AWS S3
-- **Storage**: AWS S3 for storing and serving generated QR images
-- **Secrets Management**: Sealed Secrets used for encrypted secret delivery via Git
+- **Frontend (`qrify-web`)**: Next.js UI for submitting URLs and viewing QR codes
+- **API (`qrify-web-api`)**: FastAPI service that generates QR codes and uploads them to **Amazon S3** (via **IRSA**)
+- **Developer portal (`qrify-portal`)**: Internal Next.js portal that dispatches a scaffold workflow to create a new service repo, ECR repositories, and GitOps entries in `cluster-state`
+- **Secrets (`sealed-secrets`)**: Encrypted Kubernetes secrets committed to Git and decrypted in-cluster by the Sealed Secrets controller
+- **GitOps (`cluster-state`)**: Argo CD **App of Apps** + per-service Helm values for `dev` / `prod`
+- **Shared chart (`helm-charts`)**: `qrify-base` Helm chart consumed by every app
+- **CI composites (`github-actions`)**: Reusable Actions (OIDC assume-role, Docker→ECR, `update-app-tag`, EKS kubeconfig, etc.)
 
-All services are deployed to **Amazon EKS**, managed via **ArgoCD** (App of Apps pattern), and integrated with Prometheus and Loki for observability. Infrastructure is provisioned using **Terraform**, and deployments are environment-specific (`dev`, `prod`) using **Helm**.  **Blue-Green Deployments** are implemented to ensure zero-downtime rollouts and safe rollbacks.
+Workloads run on **Amazon EKS** (`qrify-eks`, `us-east-2`). Delivery is **GitOps via Argo CD**. Progressive delivery uses **Argo Rollouts**. Observability is **Prometheus + Grafana + Loki**. Edge traffic hits **NGINX Ingress** with **ACM** TLS and **Route 53** DNS. Infrastructure is **Terraform** (bootstrap for org OIDC/IAM + managed stack for the cluster and add-ons).
 
 ---
 
 ## 🔧 Technologies Used
 
-* **Next.js** – Frontend application
+* **Next.js** – Product UI and developer portal
 * **FastAPI** – Backend API service
-* **Docker** – Containerization for all components
+* **Docker** – Containerization for all apps
 * **Kubernetes (EKS)** – Container orchestration
-* **ArgoCD** – GitOps-based continuous delivery
-* **Helm** – Reusable and environment-specific chart management
-* **GitHub Actions** – CI pipelines for builds and image pushes
-* **Terraform** – Infrastructure as Code for VPC, EKS, S3, IAM, etc.
+* **Argo CD** – GitOps continuous delivery (App of Apps)
+* **Argo Rollouts** – Progressive delivery / safe promotions
+* **Helm** – Shared `qrify-base` chart + per-env values
+* **GitHub Actions** – CI, image publish, GitOps tag bumps, portal scaffolding
+* **Terraform** – VPC, EKS, ECR, S3, IAM OIDC roles, ingress/DNS
 * **AWS Services**
-  * 🧠 EKS – Manages Kubernetes clusters to run containerized applications.
-
-  * 📦 S3 – Stores and serves generated QR code images.
-
-  * 🌐 Route 53 – Handles DNS for custom domains.
-
-  * 🔐 IAM – Controls secure access to AWS resources using IRSA.
-
-  * 📥 ECR – Stores and manages Docker container images.
-
-
-  
-* **Sealed Secrets** – GitOps-compatible secrets encryption and delivery
-* **IRSA (IAM Roles for Service Accounts)** – Secure cloud permissions for API pods
-* **Prometheus** – Metrics collection and alerting
-* **Grafana** – Dashboards and visualizations for app health, performance, and logs
-* **Loki** – Centralized log aggregation for Kubernetes workloads
+  * 🧠 **EKS** – Runs containerized workloads across `dev` / `prod` / platform namespaces
+  * 📦 **S3** – Stores and serves generated QR images
+  * 🌐 **Route 53** – DNS for `qrify-web.com` and env subdomains
+  * 🔐 **IAM + OIDC** – GitHub→AWS roles (`QRifyTerraformRole`, `QRifyECRPushRole`, `QRifyEKSAccessRole`) and IRSA for the API
+  * 📥 **ECR** – Per-service `*-dev` / `*-prod` images
+  * 🔒 **ACM** – TLS certificates at the load balancer
+* **Sealed Secrets** – GitOps-compatible secret encryption and delivery
+* **NGINX Ingress** – Cluster ingress (NLB) for app traffic
+* **Prometheus / Grafana / Loki** – Metrics, dashboards, and log aggregation
 
 ---
 
 ## 📁 Repository Overview
 
-| Repository           | Description                                                      |
-|----------------------|------------------------------------------------------------------|
-| `qrify-web`          | Next.js web UI with Docker and GitHub Actions                   |
-| `qrify-web-api`      | FastAPI backend with S3 integration                             |
-| `infra`              | Terraform code for AWS infrastructure                           |
-| `helm-charts`        | Shared Helm chart templates for service deployments             |
-| `cluster-state`      | ArgoCD Applications and Helm values for `dev`/`prod`            |
-| `sealed-secrets`     | Encrypted Kubernetes Secrets for GitOps delivery via Bitnami Sealed Secrets |
-| `github-actions`     | Reusable GitHub composite actions (e.g., Docker build, tag update) |
-| `.github`            | Org-wide metadata and documentation                             |
+| Repository | Description |
+|------------|-------------|
+| [`qrify-web`](https://github.com/QRify-platform/qrify-web) | Next.js QR frontend · release workflows → ECR → cluster-state |
+| [`qrify-web-api`](https://github.com/QRify-platform/qrify-web-api) | FastAPI QR API · S3 via IRSA |
+| [`qrify-portal`](https://github.com/QRify-platform/qrify-portal) | Internal developer portal · `scaffold-service` workflow |
+| [`infra`](https://github.com/QRify-platform/infra) | Terraform bootstrap + EKS / ECR / ingress / platform add-ons |
+| [`cluster-state`](https://github.com/QRify-platform/cluster-state) | Argo CD App of Apps + Helm values for `dev` / `prod` |
+| [`helm-charts`](https://github.com/QRify-platform/helm-charts) | Shared `qrify-base` chart (published to GitHub Pages) |
+| [`github-actions`](https://github.com/QRify-platform/github-actions) | Reusable composite actions (OIDC, build-push, tag update, …) |
+| [`sealed-secrets`](https://github.com/QRify-platform/sealed-secrets) | Encrypted SealedSecret manifests per environment |
+| [`.github`](https://github.com/QRify-platform/.github) | This organization profile README |
 
 ---
 
 ## 🌐 Environments
 
-QRify runs in two separate environments, each with its corresponding services.
+QRify runs separate **`dev`** and **`prod`** namespaces, each with its own Helm values (`values.dev.yaml` / `values.prod.yaml`):
 
 - **Development**
-  - Triggered on push to `main`
-  - Uses `values.dev.yaml`
-  - Lower resources and debug logging
+  - App release workflows run on push to `main`
+  - Looser promotion settings for fast iteration
+  - Hosts: `dev.qrify-web.com`, `portal-dev.qrify-web.com`
 
 - **Production**
-  - Triggered via Git tag or manual promotion
-  - Uses `values.prod.yaml`
-  - Higher replicas, optimized logging, restricted accesss
+  - Typically promoted via `workflow_dispatch` / controlled rollouts
+  - Stricter rollout settings
+  - Hosts: `qrify-web.com`, `portal.qrify-web.com`
 
-Environment configs are separated using Helm value overrides, and deployed independently through ArgoCD.
+Environment configs stay in `cluster-state` and are synced independently by Argo CD.
 
 <img width="700" alt="Screenshot 2025-06-20 at 1 01 20 AM" src="https://github.com/user-attachments/assets/793cc2cc-b275-4487-8adf-dcd469de14e5" />
 
 ---
 
-## 🔄 Blue-Green Deployments 🟦 🟩
+## 🧭 Developer portal & service scaffolding
 
-To minimize downtime and enable safe, reliable releases, the platform uses **Blue-Green Deployments** via ArgoCD and Kubernetes. This approach maintains two parallel environments (`blue` and `green`) and routes traffic only to the healthy one. Benefits include:
+The **portal** is how new services join the platform:
 
-* **Zero-downtime deployments**: Switch traffic seamlessly between versions.
-* **Safe rollbacks**: Instantly revert to the previous version if needed.
-* **Visual diffing**: ArgoCD UI makes version comparison easy before promotion.
+1. Engineer submits a name + stack (`nodejs` or `python`) in the portal UI
+2. Portal calls GitHub Actions `workflow_dispatch` on `qrify-portal` (thin PAT via Sealed Secret in-cluster)
+3. `scaffold-service` creates a public app repo from a template, ECR repos (`{name}-dev` / `{name}-prod`), and GitOps Helm entries in `cluster-state`
+4. First push to the new repo runs **Release Dev** → image build → `update-app-tag` → Argo sync
 
-Routing between environments can be managed using Kubernetes services or ingress rules, and is fully automated in the CI/CD pipeline.
+Heavy permissions (repo create, workflow files, ECR create) stay on the Actions secret; the running portal only needs enough rights to dispatch.
+
+---
+
+## 🔄 Progressive delivery (Argo Rollouts)
+
+Releases use **Argo Rollouts** so new versions can be promoted safely with automated rollbacks when probes fail. Benefits include:
+
+* **Controlled cutover** between revisions instead of blind rolling updates
+* **Safe rollbacks** when health checks fail
+* **Visibility** in Argo CD / Rollouts UIs before and after promotion
 
 <img width="700" alt="Screenshot 2025-06-20 at 1 33 01 AM" src="https://github.com/user-attachments/assets/5cdb0b09-c311-4fe9-a727-3cd6adb6de87" />
 
 ---
+
 ## 📈 Observability and Logging
 
-* **Prometheus** – Collects metrics from Kubernetes workloads and application endpoints, enabling real-time monitoring of resource usage, request durations, and system health.
-* **Grafana** – Visualizes metrics and logs through custom dashboards. Used to track application performance, error rates, request patterns, and namespace-level insights.
-* **Loki** – Aggregates logs from all containers in the cluster using Promtail. Enables efficient querying of logs based on labels like `namespace`, `pod`, and `container` for debugging and auditing.
-  
+* **Prometheus** – Collects metrics from Kubernetes workloads and application endpoints (`/api/metrics`, `/metrics`)
+* **Grafana** – Dashboards for health, performance, and namespace-level insights
+* **Loki + Promtail** – Centralized log aggregation labeled by namespace / pod / container
+
 * **Custom Dashboards** – Built in Grafana to monitor:
   * Total logs per namespace
   * Error rates and top error messages
   * HTTP status code distribution (500s, 404s, etc.)
-  * Top API endpoints and latency patterns (if logs include duration)
- 
-    
+  * Top API endpoints and latency patterns (when duration is logged)
+
 <p float="left">
   <img src="https://github.com/user-attachments/assets/02a8fddf-f9b7-45e0-ad3c-d4ec5d583151" style="margin-right: 5%;" width="45%" />
   <img src="https://github.com/user-attachments/assets/f67135bc-d958-46f8-a24e-c8ac3f3ca672" width="45%" />
 </p>
 
-
 ---
 
 ## 🔒 Security & Cloud Best Practices
 
-- **IRSA** (IAM Roles for Service Accounts) ensures secure access from the API to S3 without exposing credentials
-- **Sealed Secrets** enable encrypted secret storage in Git, decrypted only in the target Kubernetes cluster
-- TLS termination via **ACM** and DNS with **Route 53**
-- Supports both **ALB** and **NGINX** Ingress Controllers
-- All infrastructure is provisioned using Terraform modules and AWS security best practices
+- **GitHub OIDC → IAM roles** for Terraform, ECR push, and EKS access (no long-lived AWS keys in CI)
+- **IRSA** for API → S3 access without credentials in the pod
+- **Sealed Secrets** for encrypted secret storage in Git (e.g. portal dispatch token), decrypted only in-cluster
+- TLS via **ACM** + DNS via **Route 53**
+- **NGINX Ingress** as the public edge for app hosts
+- All infrastructure defined in Terraform modules
+
 ---
 
-## ⚙️ CI/CD Workflows
+## ⚙️ CI/CD & GitOps flow
 
-- **GitHub Actions** build and push Docker images to Amazon ECR
-- **ArgoCD** watches the `cluster-state` repo and syncs Helm apps using the App of Apps pattern
-- Composite actions like `update-app-tag` are used to automate value file updates after each build
-- Charts are versioned and published to GitHub Pages from the `helm-charts` repo on every push to `main`
+```
+push / dispatch (app repo)
+  → GitHub Actions (OIDC → QRifyECRPushRole)
+  → docker build-push → ECR (app-env:sha)
+  → update-app-tag → cluster-state values.{env}.yaml
+  → Argo CD sync → EKS ns (dev|prod)
+```
+
+- **Argo CD** watches `cluster-state` (root → app-of-apps → child apps)
+- **helm-charts** publishes `qrify-base` to GitHub Pages on push to `main`
+- **sealed-secrets** syncs encrypted manifests into `dev` / `prod`
+- Platform rebuild path lives under `infra` workflows (plan / apply / rebuild)
 
 ---
 
 ## ✅ Summary
 
-The QRify Platform is a real-world demonstration of production-grade DevOps and GitOps practices, including:
+The QRify Platform is a hands-on demonstration of production-minded platform engineering:
 
-- GitOps-based Kubernetes application delivery
-- CI/CD automation across environments
-- Cloud-native observability and security
-- Multi-environment Blue-Green Helm deployment strategy
-- Modular, reusable Terraform infrastructure
-- Encrypted secret management using Sealed Secrets
+- Product apps (QR web + API) on a shared Kubernetes path
+- Internal portal that onboards new services end-to-end
+- GitOps delivery with Argo CD + shared Helm
+- OIDC-based CI to ECR / EKS / Terraform
+- Encrypted secrets via Sealed Secrets
+- Prometheus / Grafana / Loki observability
+- Progressive delivery with Argo Rollouts
 
 Designed for performance, security, and maintainability in modern cloud-native ecosystems.
-
----
-
-## 📬 Contact
-
-Built and maintained by Bryan Ramos  
-Feel free to reach out for questions, ideas, or collaboration.
-LinkedIn: https://www.linkedin.com/in/bryan-ramos-174826279/
