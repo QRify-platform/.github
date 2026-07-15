@@ -26,6 +26,89 @@ The platform is composed of product services and a supporting delivery plane:
 
 Workloads run on **Amazon EKS** (`qrify-eks`, `us-east-2`). Delivery is **GitOps via Argo CD**. Progressive delivery uses **Argo Rollouts**. Observability is **Prometheus + Grafana + Loki**. Edge traffic hits **NGINX Ingress** with **ACM** TLS and **Route 53** DNS. Infrastructure is **Terraform** (bootstrap for org OIDC/IAM + managed stack for the cluster and add-ons).
 
+### How the platform works
+
+```mermaid
+flowchart TB
+  subgraph tf["0. Platform — Terraform (infra repo)"]
+    T1[Bootstrap: state · GitHub OIDC · CI / EKS access roles · DNS]
+    T2[Managed stack: VPC / networking · EKS · Ingress + ACM TLS<br/>Argo CD · Rollouts · Sealed Secrets · IRSA]
+    T1 --> T2
+  end
+
+  subgraph step1["1. Commit"]
+    A[Developer pushes to app repo main]
+  end
+
+  subgraph step2["2. CI — GitHub Actions"]
+    B[Build Docker image]
+    C[Push image to ECR]
+    D[Update image tag in cluster-state]
+    B --> C --> D
+  end
+
+  subgraph step3["3. GitOps — Argo CD"]
+    E[Sees cluster-state change]
+    F[Syncs into the cluster]
+    E --> F
+  end
+
+  subgraph step4["4. Deploy — Argo Rollouts"]
+    G[Preview pods start]
+    H[Active pods keep serving]
+    I[Promote switches Active to new version]
+    G --- H
+    H --> I
+  end
+
+  subgraph step5["5. Monitoring"]
+    P[Prometheus scrapes metrics]
+    Q[Loki collects logs]
+    R[Grafana dashboards]
+    P --> R
+    Q --> R
+  end
+
+  tf ==>|provisions the cluster the cycle runs on| step1
+  step1 --> step2 --> step3 --> step4 --> step5
+```
+
+Terraform stands up the platform **once** (and when infra changes). Shipping a feature does **not** re-run Terraform — it goes through the app cycle on top.
+
+0. **Terraform** — VPC/networking, EKS, Ingress + ACM TLS, Argo CD/Rollouts, Sealed Secrets, IRSA, DNS/OIDC CI roles  
+1. **Push** code to the app repo  
+2. **CI** builds/pushes an ECR image and bumps the tag in `cluster-state`  
+3. **Argo CD** syncs that Git change into EKS  
+4. **Argo Rollouts** runs blue/green (preview first; prod Promote is often manual)  
+5. **Monitoring** — Prometheus + Loki → Grafana  
+
+### Networking
+
+Public edge in front, private workers behind. Same layout in both AZs.
+
+```mermaid
+flowchart LR
+  U[Users] --> DNS[Route 53]
+  DNS --> LB[Load Balancer + TLS]
+  LB --> ING[NGINX Ingress]
+  ING --> PODS[App pods]
+
+  subgraph public["Public subnets"]
+    LB
+    NAT[NAT Gateway]
+  end
+
+  subgraph private["Private subnets — EKS workers"]
+    ING
+    PODS
+  end
+
+  PODS -.->|egress · ECR| NAT
+```
+
+**Inbound:** Users → DNS → LB (TLS) → Ingress → pods *(all compute is private)*  
+**Outbound:** pods → NAT → internet  
+
 ---
 
 ## 🔧 Technologies Used
@@ -144,6 +227,8 @@ Releases use **Argo Rollouts** so new versions can be promoted safely with autom
 ---
 
 ## ⚙️ CI/CD & GitOps flow
+
+See the Mermaid diagram under **How the platform works** for the full cycle. In short:
 
 ```
 push / dispatch (app repo)
